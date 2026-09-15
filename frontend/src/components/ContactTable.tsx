@@ -1,0 +1,432 @@
+import React, { useState } from 'react';
+import { Copy, Check, Star, ArrowUpRight, Phone, Smartphone, MapPin, UserCheck, Globe, PhoneCall, Network, Building2, Lock, Shield } from 'lucide-react';
+import { Contact, User, LdapDomain } from '../types';
+import { Avatar } from './Avatar';
+import { getVisibleMobiles, getDomainDisplayName } from '../utils/phoneUtils';
+
+interface ContactTableProps {
+  contacts: Contact[];
+  currentUser: User | null;
+  ldapDomains?: LdapDomain[];
+  onSelect: (contact: Contact) => void;
+  onToggleFavorite: (id: number | string) => void;
+  onInitiateCall?: (targetNumber: string, contact: Contact, title?: string) => void;
+  onRequireLoginForCall?: () => void;
+  onFilterByCompany?: (companyName: string) => void;
+}
+
+export const ContactTable: React.FC<ContactTableProps> = ({
+  contacts,
+  currentUser,
+  ldapDomains,
+  onSelect,
+  onToggleFavorite,
+  onInitiateCall,
+  onRequireLoginForCall,
+  onFilterByCompany,
+}) => {
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const handleCopy = (e: React.MouseEvent, text: string, key: string) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 1800);
+  };
+
+  const handleCallClick = (e: React.MouseEvent, targetNumber: string, contact: Contact, title?: string) => {
+    e.stopPropagation();
+    if (!currentUser) {
+      if (onRequireLoginForCall) onRequireLoginForCall();
+      return;
+    }
+    if (onInitiateCall) {
+      onInitiateCall(targetNumber, contact, title);
+    }
+  };
+
+  const isAdmin = currentUser ? currentUser.role === 'admin' : false;
+
+  return (
+    <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-xs font-sans">
+      <div className="overflow-x-auto">
+        <table className="w-full text-right border-collapse text-xs">
+          <thead>
+            <tr className="bg-neutral-50 border-b border-neutral-200 text-neutral-600 font-semibold">
+              <th className="py-3 px-3 w-10 text-center"></th>
+              <th className="py-3 px-4">مشخصات شخص / دامین یا شرکت</th>
+              <th className="py-3 px-3">وضعیت دسترسی</th>
+              <th className="py-3 px-4">سمت</th>
+              <th className="py-3 px-4">واحد سازمانی</th>
+              <th className="py-3 px-4">موقعیت</th>
+              <th className="py-3 px-4">خط تلفن ثابت و داخلی</th>
+              <th className="py-3 px-4">شماره همراه</th>
+              <th className="py-3 px-4">پست الکترونیک</th>
+              <th className="py-3 px-3 text-center">عملیات</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-neutral-100">
+            {contacts.map((contact) => {
+              const prefixText = contact.prefix_title === 'ms' ? 'خانم' : contact.prefix_title === 'location' ? '' : 'آقای';
+              const domainDisplayName = getDomainDisplayName(contact, ldapDomains);
+              const isOwner = currentUser ? contact.created_by_user_id === currentUser.id : false;
+
+              return (
+                <tr
+                  key={contact.id}
+                  onClick={() => onSelect(contact)}
+                  className="hover:bg-neutral-50 transition duration-150 cursor-pointer group"
+                >
+                  {/* Favorite */}
+                  <td className="py-3 px-3 text-center">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleFavorite(contact.id);
+                      }}
+                      className="text-neutral-300 hover:text-blue-600 transition cursor-pointer p-1"
+                    >
+                      <Star
+                        className={`w-3.5 h-3.5 ${
+                          contact.is_favorite
+                            ? 'fill-blue-600 text-blue-600'
+                            : 'stroke-[1.5]'
+                        }`}
+                      />
+                    </button>
+                  </td>
+
+                  {/* Name & Avatar & Domain/Company */}
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-2.5">
+                      <Avatar
+                        src={contact.avatar}
+                        prefix={contact.prefix_title}
+                        name={`${contact.first_name} ${contact.last_name}`}
+                        size="sm"
+                      />
+                      <div>
+                        <div className="flex items-center gap-1">
+                          {prefixText && (
+                            <span className="text-[11px] text-neutral-400">{prefixText}</span>
+                          )}
+                          <span className="font-bold text-neutral-900 group-hover:text-blue-600 transition">
+                            {contact.first_name} {contact.last_name}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                          {contact.contact_type === 'external' ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (contact.company_name) onFilterByCompany?.(contact.company_name);
+                              }}
+                              className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-900 bg-amber-50 hover:bg-amber-100 hover:border-amber-300 border border-amber-200 px-1.5 py-0.2 rounded transition cursor-pointer"
+                              title="کلیک کنید تا کلیه رابط‌های این شرکت فیلتر شوند"
+                            >
+                              <Building2 className="w-2.5 h-2.5 text-amber-600" />
+                              <span>{contact.company_name || 'شرکت طرف قرارداد'}</span>
+                            </button>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.2 rounded">
+                              <Network className="w-2.5 h-2.5 text-blue-600" />
+                              <span>{domainDisplayName}</span>
+                            </span>
+                          )}
+
+                          {contact.contact_type !== 'external' && contact.has_ldap_account === false && (
+                            <span className="text-[9px] text-neutral-500 bg-neutral-100 px-1.5 py-0.2 rounded border border-neutral-200" title="تلفن رومیزی در سایت (فاقد سیستم کامپیوتر)">
+                              تلفن رومیزی
+                            </span>
+                          )}
+
+                          {contact.personnel_code && (
+                            <span className="text-[10px] text-neutral-400 font-mono block" dir="ltr">
+                              #{contact.personnel_code}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Access / Ownership Scope */}
+                  <td className="py-3 px-3">
+                    {isOwner ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-200">
+                        <UserCheck className="w-3 h-3" />
+                        <span>شخصی شما</span>
+                      </span>
+                    ) : contact.is_public ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded border border-neutral-200">
+                        <Globe className="w-3 h-3 text-neutral-400" />
+                        <span>عمومی</span>
+                      </span>
+                    ) : isAdmin ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] text-neutral-700 bg-neutral-100 px-1.5 py-0.5 rounded border border-neutral-200">
+                        <span>{contact.created_by_user_name?.split(' ')[0] || `کاربر ${contact.created_by_user_id}`}</span>
+                      </span>
+                    ) : null}
+                  </td>
+
+                  {/* Job Title */}
+                  <td className="py-3 px-4 font-medium text-neutral-700">
+                    {contact.job_title || '-'}
+                  </td>
+
+                  {/* Department / Company */}
+                  <td className="py-3 px-4">
+                    {contact.contact_type === 'external' ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (contact.company_name) onFilterByCompany?.(contact.company_name);
+                        }}
+                        className="inline-flex items-center gap-1 bg-amber-50 text-amber-900 hover:bg-amber-100 hover:border-amber-300 px-2 py-0.5 rounded text-[11px] font-semibold border border-amber-200 transition cursor-pointer"
+                        title="مشاهده همه رابط‌های این شرکت"
+                      >
+                        <Building2 className="w-3 h-3 text-amber-600" />
+                        <span>{contact.company_name || 'طرف قرارداد'}</span>
+                      </button>
+                    ) : contact.department ? (
+                      <span className="inline-block bg-neutral-100 text-neutral-700 px-2 py-0.5 rounded text-[11px] border border-neutral-200">
+                        {contact.department}
+                      </span>
+                    ) : (
+                      '-'
+                    )}
+                  </td>
+
+                  {/* Location */}
+                  <td className="py-3 px-4 text-neutral-600">
+                    {contact.location ? (
+                      <span className="text-[11px] flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-neutral-400 shrink-0" />
+                        <span className="truncate max-w-[150px]">{contact.location}</span>
+                      </span>
+                    ) : (
+                      '-'
+                    )}
+                  </td>
+
+                  {/* Fixed Lines + Extension */}
+                  <td className="py-3 px-4">
+                    {contact.landlines && contact.landlines.length > 0 ? (
+                      <div className="space-y-1.5">
+                        {contact.landlines.map((l, idx) => (
+                          <div key={l.id || idx} className="flex flex-wrap items-center gap-1.5 text-xs">
+                            {l.phone ? (
+                              <div className="flex items-center gap-1">
+                                <a
+                                  href={`tel:${l.phone}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="font-bold text-blue-600 font-mono text-sm tracking-wide hover:underline"
+                                  dir="ltr"
+                                >
+                                  {l.phone}
+                                </a>
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleCallClick(e, l.phone, contact, l.title || 'تلفن ثابت')}
+                                  className={`p-0.5 cursor-pointer ${
+                                    currentUser
+                                      ? 'text-emerald-600 hover:text-emerald-800'
+                                      : 'text-neutral-400 hover:text-neutral-700'
+                                  }`}
+                                  title={
+                                    currentUser
+                                      ? 'تماس مستقیم از تلفن رومیزی شما'
+                                      : 'برای تماس خودکار VoIP، وارد شوید'
+                                  }
+                                >
+                                  <PhoneCall className="w-3.5 h-3.5" />
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleCopy(e, l.phone, `table-phone-${contact.id}-${idx}`)}
+                                  className="text-neutral-400 hover:text-neutral-700 p-0.5 cursor-pointer"
+                                  title="کپی تلفن ثابت"
+                                >
+                                  {copiedKey === `table-phone-${contact.id}-${idx}` ? (
+                                    <Check className="w-3 h-3 text-emerald-600" />
+                                  ) : (
+                                    <Copy className="w-3 h-3" />
+                                  )}
+                                </button>
+                              </div>
+                            ) : null}
+
+                            {l.extension && (
+                              <div className="inline-flex items-center gap-1">
+                                <span
+                                  className={`font-mono text-neutral-800 rounded border ${
+                                    contact.contact_type !== 'external'
+                                      ? 'text-sm font-bold bg-neutral-100 px-2 py-0.5 border-neutral-300 tracking-wide'
+                                      : 'text-[11px] bg-neutral-100 px-1.5 py-0.5 border-neutral-200'
+                                  }`}
+                                  dir="ltr"
+                                >
+                                  داخلی: {l.extension}
+                                </span>
+                                {contact.contact_type !== 'external' && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleCallClick(e, l.extension!, contact, `داخلی ${l.extension}`)}
+                                    className={`p-0.5 cursor-pointer ${
+                                      currentUser
+                                        ? 'text-emerald-600 hover:text-emerald-800'
+                                        : 'text-neutral-400 hover:text-neutral-700'
+                                    }`}
+                                    title={
+                                      currentUser
+                                        ? 'تماس سریع با داخلی از تلفن رومیزی'
+                                        : 'برای تماس خودکار با داخلی، وارد شوید'
+                                    }
+                                  >
+                                    <PhoneCall className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      '-'
+                    )}
+                  </td>
+
+                  {/* Mobiles (Slightly larger display with Privacy Support) */}
+                  <td className="py-3 px-4">
+                    {(() => {
+                      const visibleMobiles = getVisibleMobiles(contact, currentUser);
+                      if (visibleMobiles.length > 0) {
+                        return (
+                          <div className="space-y-1.5">
+                            {visibleMobiles.map((mobItem, idx) => (
+                              <div
+                                key={idx}
+                                className={`flex items-center gap-1.5 font-mono text-sm font-bold px-1.5 py-0.5 rounded border ${
+                                  mobItem.isPersonal
+                                    ? 'bg-amber-50 border-amber-300 text-amber-950'
+                                    : mobItem.type === 'admin_confidential'
+                                    ? 'bg-neutral-100 border-neutral-300 text-neutral-800'
+                                    : 'bg-neutral-50/50 border-transparent text-neutral-900'
+                                }`}
+                                dir="ltr"
+                              >
+                                <a
+                                  href={`tel:${mobItem.phone}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="hover:text-blue-600 tracking-wide"
+                                >
+                                  {mobItem.phone}
+                                </a>
+
+                                {mobItem.isPersonal && (
+                                  <span
+                                    className="font-sans text-[9px] bg-amber-200 text-amber-900 px-1 rounded flex items-center gap-0.5"
+                                    title="دفترچه شخصی شما"
+                                  >
+                                    <Lock className="w-2.5 h-2.5" />
+                                    <span>شخصی</span>
+                                  </span>
+                                )}
+
+                                {mobItem.type === 'admin_confidential' && (
+                                  <span
+                                    className="font-sans text-[9px] bg-neutral-200 text-neutral-700 px-1 rounded flex items-center gap-0.5"
+                                    title="محرمانه سازمانی (دسترسی ادمین)"
+                                  >
+                                    <Shield className="w-2.5 h-2.5" />
+                                    <span>محرمانه</span>
+                                  </span>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleCallClick(e, mobItem.phone, contact, `موبایل ${mobItem.phone}`)}
+                                  className={`p-0.5 cursor-pointer ${
+                                    currentUser
+                                      ? 'text-emerald-600 hover:text-emerald-800'
+                                      : 'text-neutral-400 hover:text-neutral-700'
+                                  }`}
+                                  title={
+                                    currentUser
+                                      ? 'شماره‌گیری این موبایل از تلفن رومیزی'
+                                      : 'برای شماره‌گیری از تلفن رومیزی، وارد شوید'
+                                  }
+                                >
+                                  <PhoneCall className="w-3.5 h-3.5" />
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleCopy(e, mobItem.phone, `table-mob-${contact.id}-${idx}`)}
+                                  className="text-neutral-400 hover:text-neutral-700 p-0.5 cursor-pointer"
+                                  title="کپی شماره همراه"
+                                >
+                                  {copiedKey === `table-mob-${contact.id}-${idx}` ? (
+                                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                  ) : (
+                                    <Copy className="w-3.5 h-3.5" />
+                                  )}
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      }
+
+                      if (contact.contact_type !== 'external' && !contact.is_mobile_public) {
+                        return (
+                          <span className="text-[11px] text-neutral-400 flex items-center gap-1 font-sans">
+                            <Lock className="w-3 h-3 text-neutral-400" />
+                            <span>محرمانه</span>
+                          </span>
+                        );
+                      }
+
+                      return '-';
+                    })()}
+                  </td>
+
+                  {/* Email */}
+                  <td className="py-3 px-4 font-mono text-[11px] text-neutral-600" dir="ltr">
+                    {contact.email ? (
+                      <a
+                        href={`mailto:${contact.email}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="hover:text-blue-600 truncate max-w-[140px] block"
+                      >
+                        {contact.email}
+                      </a>
+                    ) : (
+                      '-'
+                    )}
+                  </td>
+
+                  {/* Detail Action */}
+                  <td className="py-3 px-3 text-center">
+                    <button
+                      type="button"
+                      className="p-1.5 text-neutral-400 hover:text-blue-600 hover:bg-neutral-100 rounded-lg transition cursor-pointer"
+                      title="مشاهده شناسنامه و جزئیات"
+                    >
+                      <ArrowUpRight className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
