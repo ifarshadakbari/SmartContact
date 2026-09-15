@@ -84,7 +84,7 @@ export const BlfSidePanel: React.FC<BlfSidePanelProps> = ({
     });
 
     if (matched) {
-      if (extInfo.state === 'idle') {
+      if (currentUser && extInfo.state === 'idle') {
         onInitiateCall(extInfo.extension, matched, `تماس مستقیم BLF با داخلی ${extInfo.extension}`);
       } else if (onSelectContact) {
         onSelectContact(matched);
@@ -374,7 +374,7 @@ export const BlfSidePanel: React.FC<BlfSidePanelProps> = ({
 
                   {/* Quick Action Button */}
                   <div className="shrink-0">
-                    {isIdle && (
+                    {currentUser && isIdle && (
                       <button
                         type="button"
                         onClick={(e) => {

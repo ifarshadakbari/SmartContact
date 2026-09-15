@@ -9,14 +9,21 @@ const STORAGE_KEY_DEPARTMENTS = 'enterprise_phonebook_departments_v10';
 export const getSavedLaravelConfig = (): LaravelConfig => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_CONFIG);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.baseUrl === 'https://ip.parszarasa.local/webapp/api/public/index.php') {
+        parsed.baseUrl = '';
+        saveLaravelConfig(parsed);
+      }
+      return parsed;
+    }
   } catch (e) {
     console.error('Error reading laravel config', e);
   }
 
-  // Exact default backend URL configured for the enterprise database connection
+  // Default backend URL configured for relative /api endpoints on local Node server
   return {
-    baseUrl: 'https://ip.parszarasa.local/webapp/api/public/index.php',
+    baseUrl: '',
     apiPrefix: '/api',
     token: '',
     status: 'connected',

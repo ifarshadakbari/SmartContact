@@ -142,8 +142,8 @@ export const ContactTable: React.FC<ContactTableProps> = ({
                             </span>
                           )}
 
-                          {contact.personnel_code && (
-                            <span className="text-[10px] text-neutral-400 font-mono block" dir="ltr">
+                          {isAdmin && contact.personnel_code && (
+                            <span className="text-[10px] text-neutral-400 font-mono block" dir="ltr" title="کد پرسنلی (دسترسی مدیر سیستم)">
                               #{contact.personnel_code}
                             </span>
                           )}
@@ -229,22 +229,16 @@ export const ContactTable: React.FC<ContactTableProps> = ({
                                   {l.phone}
                                 </a>
 
-                                <button
-                                  type="button"
-                                  onClick={(e) => handleCallClick(e, l.phone, contact, l.title || 'تلفن ثابت')}
-                                  className={`p-0.5 cursor-pointer ${
-                                    currentUser
-                                      ? 'text-emerald-600 hover:text-emerald-800'
-                                      : 'text-neutral-400 hover:text-neutral-700'
-                                  }`}
-                                  title={
-                                    currentUser
-                                      ? 'تماس مستقیم از تلفن رومیزی شما'
-                                      : 'برای تماس خودکار VoIP، وارد شوید'
-                                  }
-                                >
-                                  <PhoneCall className="w-3.5 h-3.5" />
-                                </button>
+                                {currentUser && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleCallClick(e, l.phone, contact, l.title || 'تلفن ثابت')}
+                                    className="p-0.5 cursor-pointer text-emerald-600 hover:text-emerald-800"
+                                    title="تماس مستقیم از تلفن رومیزی شما"
+                                  >
+                                    <PhoneCall className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
 
                                 <button
                                   type="button"
@@ -273,20 +267,12 @@ export const ContactTable: React.FC<ContactTableProps> = ({
                                 >
                                   داخلی: {l.extension}
                                 </span>
-                                {contact.contact_type !== 'external' && (
+                                {contact.contact_type !== 'external' && currentUser && (
                                   <button
                                     type="button"
                                     onClick={(e) => handleCallClick(e, l.extension!, contact, `داخلی ${l.extension}`)}
-                                    className={`p-0.5 cursor-pointer ${
-                                      currentUser
-                                        ? 'text-emerald-600 hover:text-emerald-800'
-                                        : 'text-neutral-400 hover:text-neutral-700'
-                                    }`}
-                                    title={
-                                      currentUser
-                                        ? 'تماس سریع با داخلی از تلفن رومیزی'
-                                        : 'برای تماس خودکار با داخلی، وارد شوید'
-                                    }
+                                    className="p-0.5 cursor-pointer text-emerald-600 hover:text-emerald-800"
+                                    title="تماس سریع با داخلی از تلفن رومیزی"
                                   >
                                     <PhoneCall className="w-3 h-3" />
                                   </button>
@@ -348,22 +334,16 @@ export const ContactTable: React.FC<ContactTableProps> = ({
                                   </span>
                                 )}
 
-                                <button
-                                  type="button"
-                                  onClick={(e) => handleCallClick(e, mobItem.phone, contact, `موبایل ${mobItem.phone}`)}
-                                  className={`p-0.5 cursor-pointer ${
-                                    currentUser
-                                      ? 'text-emerald-600 hover:text-emerald-800'
-                                      : 'text-neutral-400 hover:text-neutral-700'
-                                  }`}
-                                  title={
-                                    currentUser
-                                      ? 'شماره‌گیری این موبایل از تلفن رومیزی'
-                                      : 'برای شماره‌گیری از تلفن رومیزی، وارد شوید'
-                                  }
-                                >
-                                  <PhoneCall className="w-3.5 h-3.5" />
-                                </button>
+                                {currentUser && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleCallClick(e, mobItem.phone, contact, `موبایل ${mobItem.phone}`)}
+                                    className="p-0.5 cursor-pointer text-emerald-600 hover:text-emerald-800"
+                                    title="شماره‌گیری این موبایل از تلفن رومیزی"
+                                  >
+                                    <PhoneCall className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
 
                                 <button
                                   type="button"

@@ -171,6 +171,17 @@ export const ContactCard: React.FC<ContactCardProps> = ({
               <span>ثبت: {contact.created_by_user_name || `کاربر ${contact.created_by_user_id}`}</span>
             </span>
           ) : null}
+
+          {/* Personnel code badge - Visible exclusively for Admin */}
+          {isAdmin && contact.personnel_code && (
+            <span
+              className="inline-flex items-center gap-1 text-[10px] font-mono font-bold bg-neutral-100 text-neutral-700 px-2 py-0.5 rounded border border-neutral-300"
+              title="کد پرسنلی (دسترسی مدیر سیستم)"
+              dir="ltr"
+            >
+              <span>#{contact.personnel_code}</span>
+            </span>
+          )}
         </div>
 
         {/* Department & Location */}
@@ -239,20 +250,12 @@ export const ContactCard: React.FC<ContactCardProps> = ({
                           {item.extension}
                         </span>
                       </div>
-                      {contact.contact_type !== 'external' && (
+                      {currentUser && contact.contact_type !== 'external' && (
                         <button
                           type="button"
                           onClick={(e) => handleCallClick(e, item.extension!, `داخلی ${item.extension}`)}
-                          className={`text-[10px] px-2 py-0.5 rounded border inline-flex items-center gap-1 transition cursor-pointer font-medium ${
-                            currentUser
-                              ? 'text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border-emerald-200'
-                              : 'text-neutral-500 hover:text-neutral-800 bg-neutral-100 hover:bg-neutral-200 border-neutral-300'
-                          }`}
-                          title={
-                            currentUser
-                              ? 'تماس مستقیم با این داخلی از طریق تلفن رومیزی شما'
-                              : 'برای تماس خودکار VoIP، وارد شوید'
-                          }
+                          className="text-[10px] px-2 py-0.5 rounded border inline-flex items-center gap-1 transition cursor-pointer font-medium text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border-emerald-200"
+                          title="تماس مستقیم با این داخلی از طریق تلفن رومیزی شما"
                         >
                           <PhoneCall className="w-3 h-3 text-emerald-600" />
                           <span>تماس با داخلی</span>
@@ -264,16 +267,12 @@ export const ContactCard: React.FC<ContactCardProps> = ({
 
                 {/* Fixed Phone Actions (Call + Copy) */}
                 <div className="flex items-center gap-1">
-                  {item.phone && (
+                  {currentUser && item.phone && (
                     <button
                       type="button"
                       onClick={(e) => handleCallClick(e, item.phone, item.title || 'تلفن ثابت')}
                       className="p-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg text-emerald-700 hover:text-emerald-900 transition cursor-pointer text-xs"
-                      title={
-                        currentUser
-                          ? 'شماره‌گیری این خط تلفن از روی IP Phone شما (ایزابل VoIP)'
-                          : 'برای تماس خودکار VoIP، وارد شوید'
-                      }
+                      title="شماره‌گیری این خط تلفن از روی IP Phone شما (ایزابل VoIP)"
                     >
                       <PhoneCall className="w-4 h-4 text-emerald-600" />
                     </button>
@@ -352,18 +351,16 @@ export const ContactCard: React.FC<ContactCardProps> = ({
                         </span>
                       )}
 
-                      <button
-                        type="button"
-                        onClick={(e) => handleCallClick(e, mobItem.phone, `موبایل ${mobItem.phone}`)}
-                        className="p-1 text-emerald-600 hover:text-emerald-800 transition cursor-pointer"
-                        title={
-                          currentUser
-                            ? 'شماره‌گیری این موبایل از تلفن رومیزی'
-                            : 'برای تماس خودکار VoIP، وارد شوید'
-                        }
-                      >
-                        <PhoneCall className="w-3.5 h-3.5" />
-                      </button>
+                      {currentUser && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleCallClick(e, mobItem.phone, `موبایل ${mobItem.phone}`)}
+                          className="p-1 text-emerald-600 hover:text-emerald-800 transition cursor-pointer"
+                          title="شماره‌گیری این موبایل از تلفن رومیزی"
+                        >
+                          <PhoneCall className="w-3.5 h-3.5" />
+                        </button>
+                      )}
 
                       <button
                         type="button"

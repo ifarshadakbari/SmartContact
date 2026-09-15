@@ -391,7 +391,9 @@ export const ContactModal: React.FC<ContactModalProps> = ({
     }
 
     // ** Personnel code check (safe uniqueness check preventing false duplicates on same contact)
-    const cleanPersonnelCode = normalizePhoneNumber(personnelCode.trim());
+    const cleanPersonnelCode = isAdmin
+      ? normalizePhoneNumber(personnelCode.trim())
+      : (contact?.personnel_code ? normalizePhoneNumber(contact.personnel_code.trim()) : '');
     if (contactType === 'internal' && cleanPersonnelCode) {
       if (allContacts && allContacts.length > 0) {
         const isDuplicate = allContacts.some(
@@ -977,30 +979,32 @@ export const ContactModal: React.FC<ContactModalProps> = ({
                   />
                 </div>
 
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-semibold text-neutral-700">
-                      کد پرسنلی {contactType === 'internal' ? <span className="text-red-500 font-bold">* (الزامی)</span> : <span className="text-neutral-400 font-normal">(اختیاری)</span>}
-                    </label>
+                {isAdmin && (
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-semibold text-neutral-700">
+                        کد پرسنلی {contactType === 'internal' ? <span className="text-red-500 font-bold">* (الزامی)</span> : <span className="text-neutral-400 font-normal">(اختیاری)</span>}
+                      </label>
+                    </div>
+                    <input
+                      type="text"
+                      value={personnelCode}
+                      onChange={(e) => setPersonnelCode(e.target.value)}
+                      className={`w-full px-3 py-2 bg-white border rounded-lg text-neutral-900 text-xs focus:ring-2 focus:outline-none font-mono ${
+                        contactType === 'internal' && !personnelCode.trim()
+                          ? 'border-amber-400 focus:ring-amber-500 bg-amber-50/20'
+                          : 'border-neutral-300 focus:ring-blue-600'
+                      }`}
+                      placeholder="کد پرسنلی"
+                      dir="ltr"
+                    />
+                    {contactType === 'internal' && (
+                      <p className="text-[10px] text-neutral-500 mt-1">
+                        کد پرسنلی یکتا برای پرسنل درون‌سازمانی (صرفاً در دسترسی مدیر سیستم)
+                      </p>
+                    )}
                   </div>
-                  <input
-                    type="text"
-                    value={personnelCode}
-                    onChange={(e) => setPersonnelCode(e.target.value)}
-                    className={`w-full px-3 py-2 bg-white border rounded-lg text-neutral-900 text-xs focus:ring-2 focus:outline-none font-mono ${
-                      contactType === 'internal' && !personnelCode.trim()
-                        ? 'border-amber-400 focus:ring-amber-500 bg-amber-50/20'
-                        : 'border-neutral-300 focus:ring-blue-600'
-                    }`}
-                    placeholder="کد پرسنلی"
-                    dir="ltr"
-                  />
-                  {contactType === 'internal' && (
-                    <p className="text-[10px] text-neutral-500 mt-1">
-                      کد پرسنلی یکتا برای پرسنل درون‌سازمانی
-                    </p>
-                  )}
-                </div>
+                )}
               </div>
 
               {/* SECTION: ** خط تلفن ثابت + داخلی (امکان افزودن چند مورد) */}
@@ -1261,8 +1265,8 @@ export const ContactModal: React.FC<ContactModalProps> = ({
                         {department}
                       </span>
                     )}
-                    {personnelCode && (
-                      <span className="bg-white/10 px-2 py-0.5 rounded text-neutral-300 font-mono text-[11px]" dir="ltr">
+                    {isAdmin && personnelCode && (
+                      <span className="bg-white/10 px-2 py-0.5 rounded text-neutral-300 font-mono text-[11px]" dir="ltr" title="کد پرسنلی (دسترسی ادمین)">
                         کد: {personnelCode}
                       </span>
                     )}
@@ -1349,24 +1353,24 @@ export const ContactModal: React.FC<ContactModalProps> = ({
 
                         {/* Action Buttons: Extension Call, Landline Call, Copy */}
                         <div className="flex items-center gap-2 self-start lg:self-auto shrink-0 flex-wrap pt-2.5 lg:pt-0 border-t lg:border-t-0 border-neutral-200/60 w-full lg:w-auto justify-end">
-                          {l.extension && contact && contact.contact_type !== 'external' && (
+                          {currentUser && l.extension && contact && contact.contact_type !== 'external' && (
                             <button
                               type="button"
                               onClick={() => handleCallClick(l.extension, `داخلی ${l.extension}`)}
                               className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg text-xs font-semibold text-emerald-700 hover:text-emerald-900 transition cursor-pointer flex items-center gap-1.5 shadow-2xs whitespace-nowrap"
-                              title={currentUser ? "تماس مستقیم با این شماره داخلی از تلفن رومیزی شما" : "برای برقراری تماس لطفاً وارد شوید"}
+                              title="تماس مستقیم با این شماره داخلی از تلفن رومیزی شما"
                             >
                               <PhoneCall className="w-3.5 h-3.5 text-emerald-600" />
                               <span>تماس با داخلی {l.extension}</span>
                             </button>
                           )}
 
-                          {l.phone && contact && (
+                          {currentUser && l.phone && contact && (
                             <button
                               type="button"
                               onClick={() => handleCallClick(l.phone, l.title || 'تلفن ثابت')}
                               className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-semibold text-blue-700 hover:text-blue-900 transition cursor-pointer flex items-center gap-1.5 shadow-2xs whitespace-nowrap"
-                              title={currentUser ? "شماره‌گیری از تلفن رومیزی شما (VoIP)" : "برای تماس با VoIP سازمانی وارد شوید"}
+                              title="شماره‌گیری از تلفن رومیزی شما (VoIP)"
                             >
                               <Phone className="w-3.5 h-3.5 text-blue-600" />
                               <span>تماس با خط ثابت</span>
@@ -1566,12 +1570,12 @@ export const ContactModal: React.FC<ContactModalProps> = ({
                             </div>
 
                             <div className="flex items-center gap-2 font-sans self-start sm:self-auto shrink-0 flex-wrap">
-                              {contact && (
+                              {currentUser && contact && (
                                 <button
                                   type="button"
                                   onClick={() => handleCallClick(mobItem.phone, mobItem.isPersonal ? 'همراه دفترچه شخصی' : 'شماره همراه')}
                                   className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg text-emerald-700 hover:text-emerald-900 cursor-pointer text-xs font-semibold flex items-center gap-1.5 shadow-2xs whitespace-nowrap"
-                                  title={currentUser ? "تماس از تلفن رومیزی با شماره همراه" : "برای برقراری تماس با VoIP وارد شوید"}
+                                  title="تماس از تلفن رومیزی با شماره همراه"
                                 >
                                   <PhoneCall className="w-3.5 h-3.5 text-emerald-600" />
                                   <span>تماس با همراه</span>
