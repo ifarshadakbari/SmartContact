@@ -1,0 +1,194 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\Contact;
+use Illuminate\Http\Request;
+
+class ContactController extends Controller
+{
+    /**
+     * دریافت لیست مخاطبین با وضعیت اختصاصی نشان‌شده کاربر لاگین‌شده
+     */
+    public function index(Request $request)
+    {
+        $user = $request->user();
+        $query = Contact::query();
+
+        // فیلتر جستجو
+        if ($request->filled('search')) {
+            $s = $request->search;
+            $query->where(function($q) use ($s) {
+                $q->where('first_name', 'like', "%{$s}%")
+                  ->orWhere('last_name', 'like', "%{$s}%")
+                  ->orWhere('job_title', 'like', "%{$s}%")
+                  ->orWhere('department', 'like', "%{$s}%")
+                  ->orWhere('personnel_code', 'like', "%{$s}%");
+            });
+        }
+
+        // فیلتر دپارتمان / واحد سازمانی
+        if ($request->filled('department') && $request->department !== 'all') {
+            $query->where('department', $request->department);
+        }
+
+        // تفکیک دسترسی: اگر کاربر ادمین نیست، فقط مخاطبین عمومی یا مخاطبین ثبت‌شده توسط خودش را ببیند
+        if ($user && isset($user->role) && $user->role !== 'admin') {
+            $query->where(function ($q) use ($user) {
+                $q->where('is_public', true)
+                  ->orWhere('created_by_user_id', $user->id);
+            });
+        }
+
+        // استخراج شناسه‌های مخاطبان نشان‌شده کاربر جاری از جدول واسط contact_favorites
+        $userFavIds = $user ? $user->favoriteContacts()->pluck('contacts.id')->toArray() : [];
+
+        // افزودن وضعیت اختصاصی is_favorite به هر مخاطب برای این کاربر
+        $contacts = $query->orderBy('id', 'desc')->get()->map(function ($contact) use ($userFavIds) {
+            $contact->is_favorite = in_array($contact->id, $userFavIds);
+            return $contact;
+        });
+
+        return response()->json($contacts);
+    }
+
+    /**
+     * ثبت مخاطب جدید
+     */
+    public function store(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'first_name'       => 'required|string|max:100',
+            'last_name'        => 'required|string|max:100',
+            'prefix_title'     => 'nullable|string|in:mr,ms',
+            'personnel_code'   => 'nullable|string|max:50',
+            'job_title'        => 'nullable|string|max:150',
+            'department'       => 'nullable|string|max:150',
+            'location'         => 'nullable|string|max:150',
+            'mobiles'          => 'nullable|array',
+            'landlines'        => 'nullable|array',
+            'email'            => 'nullable|email|max:150',
+            'description'      => 'nullable|string',
+            'avatar'           => 'nullable|string',
+            'contact_type'     => 'nullable|string|in:internal,external',
+            'domain'           => 'nullable|string|max:100',
+            'is_public'        => 'nullable|boolean',
+        ]);
+
+        if ($user) {
+            $validated['created_by_user_id'] = $user->id;
+            $validated['created_by_user_name'] = $user->name ?? $user->username ?? 'کاربر سیستم';
+        }
+
+        $contact = Contact::create($validated);
+        $contact->is_favorite = false;
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'مخاطب با موفقیت ذخیره شد.',
+            'data'    => $contact,
+        ], 201);
+    }
+
+    /**
+     * مشاهده تکی مخاطب
+     */
+    public function show(Request $request, $id)
+    {
+        $user = $request->user();
+        $contact = Contact::findOrFail($id);
+
+        if ($user) {
+            $contact->is_favorite = $user->favoriteContacts()->where('contact_id', $contact->id)->exists();
+        } else {
+            $contact->is_favorite = false;
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => $contact,
+        ]);
+    }
+
+    /**
+     * ویرایش مخاطب
+     */
+    public function update(Request $request, $id)
+    {
+        $contact = Contact::findOrFail($id);
+
+        $validated = $request->validate([
+            'first_name'       => 'sometimes|required|string|max:100',
+            'last_name'        => 'sometimes|required|string|max:100',
+            'prefix_title'     => 'nullable|string|in:mr,ms',
+            'personnel_code'   => 'nullable|string|max:50',
+            'job_title'        => 'nullable|string|max:150',
+            'department'       => 'nullable|string|max:150',
+            'location'         => 'nullable|string|max:150',
+            'mobiles'          => 'nullable|array',
+            'landlines'        => 'nullable|array',
+            'email'            => 'nullable|email|max:150',
+            'description'      => 'nullable|string',
+            'avatar'           => 'nullable|string',
+            'contact_type'     => 'nullable|string|in:internal,external',
+            'domain'           => 'nullable|string|max:100',
+            'is_public'        => 'nullable|boolean',
+        ]);
+
+        $contact->update($validated);
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'اطلاعات مخاطب به‌روزرسانی شد.',
+            'data'    => $contact,
+        ]);
+    }
+
+    /**
+     * حذف مخاطب
+     */
+    public function destroy($id)
+    {
+        $contact = Contact::findOrFail($id);
+        $contact->delete();
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'مخاطب با موفقیت حذف شد.',
+        ]);
+    }
+
+    /**
+     * تغییر وضعیت نشان‌شده / علاقه‌مندی به ازای کاربر لاگین‌شده (Toggle Favorite)
+     * هم با شناسه عددی ($id) و هم با مدل بایندینگ (Contact $contact) سازگار است.
+     */
+    public function favorite(Request $request, $contact)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'کاربر احراز هویت نشده است.'], 401);
+        }
+
+        $contactModel = $contact instanceof Contact ? $contact : Contact::findOrFail($contact);
+
+        // بررسی و تغییر وضعیت در جدول رابط contact_favorites
+        $isFavorited = $user->favoriteContacts()->where('contact_id', $contactModel->id)->exists();
+        if ($isFavorited) {
+            $user->favoriteContacts()->detach($contactModel->id);
+            $newStatus = false;
+        } else {
+            $user->favoriteContacts()->attach($contactModel->id);
+            $newStatus = true;
+        }
+
+        return response()->json([
+            'status'      => 'success',
+            'contact_id'  => $contactModel->id,
+            'is_favorite' => $newStatus,
+            'message'     => $newStatus ? 'به نشان‌شده‌ها اضافه شد.' : 'از نشان‌شده‌ها حذف شد.',
+        ]);
+    }
+}
